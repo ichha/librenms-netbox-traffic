@@ -187,21 +187,33 @@ class LibreNMSAPIClient:
         for port in ports:
             ifName_norm = self._normalize_interface_name(port.get("ifName"))
             ifDescr_norm = self._normalize_interface_name(port.get("ifDescr"))
-            if target_norm in (ifName_norm, ifDescr_norm):
+            if target_norm == ifName_norm or target_norm == ifDescr_norm:
                 matched_port = port
                 break
                 
-        # 2. Second pass: check if target_norm is a substring or vice versa
+        # 2. Second pass: exact normalized match on label or ifAlias
+        if not matched_port:
+            for port in ports:
+                label_norm = self._normalize_interface_name(port.get("label"))
+                ifAlias_norm = self._normalize_interface_name(port.get("ifAlias"))
+                if target_norm == label_norm or target_norm == ifAlias_norm:
+                    matched_port = port
+                    break
+
+        # 3. Third pass: prefix match (e.g. database description "hu0/2/0/43-to-pokhara" starts with target "hu0/2/0/43")
         if not matched_port:
             for port in ports:
                 ifName_norm = self._normalize_interface_name(port.get("ifName"))
                 ifDescr_norm = self._normalize_interface_name(port.get("ifDescr"))
-                ifAlias_norm = self._normalize_interface_name(port.get("ifAlias"))
                 label_norm = self._normalize_interface_name(port.get("label"))
                 
-                # Check if target_norm is part of any normalized name or vice versa
-                if (target_norm and (target_norm in ifName_norm or target_norm in ifDescr_norm or target_norm in ifAlias_norm or target_norm in label_norm or
-                                     ifName_norm in target_norm or ifDescr_norm in target_norm)):
+                if ifName_norm and ifName_norm.startswith(target_norm):
+                    matched_port = port
+                    break
+                if ifDescr_norm and ifDescr_norm.startswith(target_norm):
+                    matched_port = port
+                    break
+                if label_norm and label_norm.startswith(target_norm):
                     matched_port = port
                     break
                     
