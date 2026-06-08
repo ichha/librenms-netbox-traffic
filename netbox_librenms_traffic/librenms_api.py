@@ -91,12 +91,12 @@ class LibreNMSAPIClient:
         """
         Fetch the raw RRD graph image from LibreNMS.
         """
-        # Map range to LibreNMS 'from' style
         range_map = {
             "1d": "-1d",
             "2d": "-2d",
             "7d": "-7d",
-            "30d": "-30d"
+            "30d": "-30d",
+            "1y": "-1y"
         }
         from_time = range_map.get(time_range, "-1d")
         

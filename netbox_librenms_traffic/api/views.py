@@ -79,8 +79,8 @@ class LibreNMSTrafficDataView(View):
                     port_name=interface_name,
                     time_range=time_range,
                     double_encode=False,
-                    width=1100,
-                    height=300
+                    width=1350,
+                    height=350
                 )
             except Exception as single_err:
                 logger.warning(f"Single encoded port graph query failed: {str(single_err)}. Retrying with double-encoding...")
@@ -90,8 +90,8 @@ class LibreNMSTrafficDataView(View):
                         port_name=interface_name,
                         time_range=time_range,
                         double_encode=True,
-                        width=1100,
-                        height=300
+                        width=1350,
+                        height=350
                     )
                 except Exception as double_err:
                     err_msg = f"LibreNMS API failed for both single and double encoded routes. Single error: {str(single_err)}. Double error: {str(double_err)}"

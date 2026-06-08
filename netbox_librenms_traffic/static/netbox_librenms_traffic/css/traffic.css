@@ -40,3 +40,16 @@
     --bs-spinner-border-width: 0.25em;
     color: #1abc9c !important;
 }
+
+/* Zoom effect on hovering the graph */
+#librenms-graph-img {
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s ease;
+    cursor: zoom-in;
+}
+
+#librenms-graph-img:hover {
+    transform: scale(1.025);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    z-index: 10;
+    position: relative;
+}
