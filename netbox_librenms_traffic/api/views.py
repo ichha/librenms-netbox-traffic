@@ -71,9 +71,10 @@ class LibreNMSTrafficDataView(View):
 
             # 3. Retrieve graph image from LibreNMS (try single-encoding first, fallback to double-encoding if needed)
             image_content = None
+            content_type = "image/png"
             try:
                 logger.info(f"Attempting single-encoded port graph query for: {interface_name}")
-                image_content = client.get_port_graph_image(
+                image_content, content_type = client.get_port_graph_image(
                     device_identifier=device_id,
                     port_name=interface_name,
                     time_range=time_range,
@@ -84,7 +85,7 @@ class LibreNMSTrafficDataView(View):
             except Exception as single_err:
                 logger.warning(f"Single encoded port graph query failed: {str(single_err)}. Retrying with double-encoding...")
                 try:
-                    image_content = client.get_port_graph_image(
+                    image_content, content_type = client.get_port_graph_image(
                         device_identifier=device_id,
                         port_name=interface_name,
                         time_range=time_range,
@@ -100,8 +101,8 @@ class LibreNMSTrafficDataView(View):
                         status=500
                     )
 
-            # 4. Return raw PNG image response
-            return HttpResponse(image_content, content_type="image/png")
+            # 4. Return raw image response with correct content-type (e.g. image/png or image/svg+xml)
+            return HttpResponse(image_content, content_type=content_type)
 
         except Exception as e:
             logger.exception(f"Failed to fetch LibreNMS graph: {str(e)}")

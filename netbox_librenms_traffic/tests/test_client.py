@@ -68,15 +68,17 @@ class LibreNMSAPIClientTests(TestCase):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = b"fake-png-data"
+        mock_response.headers = {"content-type": "image/png"}
         mock_get.return_value = mock_response
 
-        content = self.client.get_port_graph_image(
+        content, content_type = self.client.get_port_graph_image(
             device_identifier=42,
             port_name="HundredGigE0/0/0/1",
             time_range="7d"
         )
         
         self.assertEqual(content, b"fake-png-data")
+        self.assertEqual(content_type, "image/png")
         
         # Verify correct URL construction & encoding
         # HundredGigE0/0/0/1 -> HundredGigE0%2F0%2F0%2F1

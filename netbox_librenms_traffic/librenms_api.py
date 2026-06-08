@@ -127,13 +127,13 @@ class LibreNMSAPIClient:
             except ValueError:
                 raise Exception(f"LibreNMS API returned JSON with non-JSON body: {r.text[:200]}")
                 
-        # Validate that the content is a valid PNG image
+        # Validate that the content is a valid image (e.g. image/png or image/svg+xml)
         if not r.content:
             raise Exception("LibreNMS API returned an empty response (0 bytes).")
             
-        if not r.content.startswith(b'\x89PNG'):
-            # The response is not a valid PNG (e.g. it might be HTML of a login page or error page)
+        if "image/" not in content_type:
+            # The response is not a valid image (e.g. it might be HTML of a login page or error page)
             snippet = r.text[:250].strip().replace('\n', ' ').replace('\r', '')
-            raise Exception(f"LibreNMS did not return a valid PNG image. Content type: {content_type}. Snippet: {snippet}")
+            raise Exception(f"LibreNMS did not return a valid image. Content type: {content_type}. Snippet: {snippet}")
             
-        return r.content
+        return r.content, content_type
