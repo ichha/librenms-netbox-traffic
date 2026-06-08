@@ -1,0 +1,97 @@
+/* NetBox Zabbix Traffic Plugin Custom Stylesheet */
+
+.zabbix-traffic-card {
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(108, 117, 125, 0.15) !important;
+    background-color: var(--bs-card-bg, #ffffff) !important;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.zabbix-traffic-card:hover {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+    border-color: rgba(46, 204, 113, 0.25) !important;
+}
+
+.zabbix-badge-icon {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background-color: #e74c3c; /* Zabbix red badge color theme */
+    border-radius: 3px;
+    position: relative;
+    box-shadow: 0 0 8px rgba(231, 76, 60, 0.5);
+}
+
+.zabbix-badge-icon::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 8px;
+    height: 8px;
+    border: 1.5px solid #ffffff;
+    border-radius: 1px;
+}
+
+/* Legend row indicator boxes */
+.legend-color-box {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+    border-radius: 2px;
+    vertical-align: middle;
+}
+
+.legend-color-box.in-color {
+    background-color: #2ecc71;
+    box-shadow: 0 0 6px rgba(46, 204, 113, 0.4);
+}
+
+.legend-color-box.out-color {
+    background-color: #f1c40f;
+    box-shadow: 0 0 6px rgba(241, 196, 15, 0.4);
+}
+
+/* Stats table formatting matching Zabbix's screenshot */
+.zabbix-legend-table {
+    border-collapse: collapse !important;
+    width: 100%;
+}
+
+.zabbix-legend-table th {
+    font-size: 11px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--bs-secondary-color, #6c757d);
+    font-weight: 700;
+    padding: 6px 12px !important;
+    border-bottom: 2px solid rgba(108, 117, 125, 0.1) !important;
+}
+
+.zabbix-legend-table td {
+    font-size: 13px !important;
+    padding: 8px 12px !important;
+    border-bottom: 1px solid rgba(108, 117, 125, 0.05) !important;
+    color: var(--bs-body-color, #212529);
+}
+
+.zabbix-legend-table tbody tr:hover {
+    background-color: rgba(108, 117, 125, 0.02);
+}
+
+#legend-row-in td.text-success {
+    color: #27ae60 !important;
+}
+
+#legend-row-out td.text-warning {
+    color: #d35400 !important; /* Slightly darker orange for high contrast readability */
+}
+
+/* Spinner adjustment */
+.spinner-border.text-success {
+    --bs-spinner-border-width: 0.25em;
+    color: #2ecc71 !important;
+}

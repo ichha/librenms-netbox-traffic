@@ -1,0 +1,87 @@
+{% load static %}
+<div class="card mt-4 zabbix-traffic-card">
+    <div class="card-header d-flex justify-content-between align-items-center bg-body-tertiary border-bottom py-2">
+        <h5 class="card-title mb-0 d-flex align-items-center gap-2">
+            <span class="zabbix-badge-icon"></span>
+            Zabbix Live Interface Traffic (v2)
+        </h5>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Zabbix Time Range">
+            <button type="button" class="btn btn-outline-secondary active btn-range" data-range="1d">Last 24 Hours</button>
+            <button type="button" class="btn btn-outline-secondary btn-range" data-range="2d">Last 48 Hours</button>
+            <button type="button" class="btn btn-outline-secondary btn-range" data-range="7d">Last 7 Days</button>
+            <button type="button" class="btn btn-outline-secondary btn-range" data-range="30d">Last 30 Days</button>
+        </div>
+    </div>
+    <div class="card-body position-relative p-4">
+        
+        <!-- Loading Spinner -->
+        <div id="zabbix-loading" class="d-flex flex-column justify-content-center align-items-center py-5">
+            <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="mt-3 text-muted fw-semibold">Connecting to Zabbix and querying interface metrics...</span>
+        </div>
+
+        <!-- Error Alert -->
+        <div id="zabbix-error" class="alert alert-warning d-none" role="alert">
+            <h5 class="alert-heading fw-bold d-flex align-items-center gap-2">
+                <i class="mdi mdi-alert-circle"></i> Zabbix Mapping Warning
+            </h5>
+            <p id="zabbix-error-msg" class="mb-0"></p>
+        </div>
+
+        <!-- Chart Canvas -->
+        <div id="zabbix-chart-wrapper" class="d-none">
+            <div class="chart-container position-relative" style="height: 380px; width: 100%;">
+                <canvas id="zabbixTrafficChart"></canvas>
+            </div>
+            
+            <!-- Statistics Legend (Formatted like Zabbix) -->
+            <div class="zabbix-legend-container mt-4 pt-3 border-top">
+                <div class="table-responsive">
+                    <table class="table table-sm table-borderless text-center align-middle mb-0 zabbix-legend-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 28%; text-align: left;">Traffic Direction</th>
+                                <th style="width: 18%;">last</th>
+                                <th style="width: 18%;">min</th>
+                                <th style="width: 18%;">avg</th>
+                                <th style="width: 18%;">max</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr id="legend-row-in">
+                                <td style="text-align: left;" class="fw-semibold text-success">
+                                    <span class="legend-color-box in-color"></span>
+                                    Bits received (Inbound)
+                                </td>
+                                <td id="stat-in-last" class="fw-medium">-</td>
+                                <td id="stat-in-min">-</td>
+                                <td id="stat-in-avg">-</td>
+                                <td id="stat-in-max" class="fw-semibold">-</td>
+                            </tr>
+                            <tr id="legend-row-out">
+                                <td style="text-align: left;" class="fw-semibold text-warning">
+                                    <span class="legend-color-box out-color"></span>
+                                    Bits sent (Outbound)
+                                </td>
+                                <td id="stat-out-last" class="fw-medium">-</td>
+                                <td id="stat-out-min">-</td>
+                                <td id="stat-out-avg">-</td>
+                                <td id="stat-out-max" class="fw-semibold">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Load Chart.js and Style Files -->
+<link rel="stylesheet" href="{% static 'netbox_zabbix2_traffic/css/traffic.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'netbox_zabbix2_traffic/js/traffic.js' %}" 
+        data-device="{{ device_name }}" 
+        data-interface="{{ interface_name }}"></script>
