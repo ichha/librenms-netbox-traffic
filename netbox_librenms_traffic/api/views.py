@@ -1,8 +1,5 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from django.http import HttpResponse
+from django.views import View
+from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from dcim.models import Device
 from netbox_librenms_traffic.librenms_api import LibreNMSAPIClient
@@ -10,21 +7,22 @@ import logging
 
 logger = logging.getLogger("netbox.plugins.netbox_librenms_traffic")
 
-class LibreNMSTrafficDataView(APIView):
+class LibreNMSTrafficDataView(View):
     """
     Proxy API view that fetches live interface graphs from LibreNMS and serves them as PNG.
     """
-    permission_classes = [IsAuthenticated]
-
     def get(self, request):
-        device_name = request.query_params.get("device")
-        interface_name = request.query_params.get("interface")
-        time_range = request.query_params.get("range", "1d")
+        if not request.user.is_authenticated:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+
+        device_name = request.GET.get("device")
+        interface_name = request.GET.get("interface")
+        time_range = request.GET.get("range", "1d")
 
         if not device_name or not interface_name:
-            return Response(
+            return JsonResponse(
                 {"error": "Missing device or interface query parameters"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=400
             )
 
         # Retrieve plugin configuration
@@ -34,9 +32,9 @@ class LibreNMSTrafficDataView(APIView):
         verify_ssl = plugin_config.get("verify_ssl", False)
 
         if not librenms_url or not librenms_token:
-            return Response(
+            return JsonResponse(
                 {"error": "LibreNMS plugin configuration is missing or incomplete"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=500
             )
 
         # 1. Look up NetBox device to extract primary IPv4 address
@@ -58,9 +56,9 @@ class LibreNMSTrafficDataView(APIView):
             device = client.get_device_by_ip_or_name(device_name, ip_address)
             if not device:
                 logger.error(f"Device '{device_name}' (IP: {ip_address}) could not be resolved in LibreNMS")
-                return Response(
+                return JsonResponse(
                     {"error": f"Device '{device_name}' (IP: {ip_address or 'None'}) not found in LibreNMS"},
-                    status=status.HTTP_404_NOT_FOUND
+                    status=404
                 )
 
             # We use device_id (numeric) which is much more reliable in API endpoints
@@ -97,9 +95,9 @@ class LibreNMSTrafficDataView(APIView):
                 except Exception as double_err:
                     err_msg = f"LibreNMS API failed for both single and double encoded routes. Single error: {str(single_err)}. Double error: {str(double_err)}"
                     logger.error(err_msg)
-                    return Response(
+                    return JsonResponse(
                         {"error": err_msg},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        status=500
                     )
 
             # 4. Return raw PNG image response
@@ -107,7 +105,7 @@ class LibreNMSTrafficDataView(APIView):
 
         except Exception as e:
             logger.exception(f"Failed to fetch LibreNMS graph: {str(e)}")
-            return Response(
+            return JsonResponse(
                 {"error": f"Failed to retrieve graph from LibreNMS: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=500
             )
