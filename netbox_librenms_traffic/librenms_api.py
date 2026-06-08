@@ -207,7 +207,23 @@ class LibreNMSAPIClient:
                     
         if not matched_port:
             logger.warning(f"Port '{port_name}' (normalized: '{target_norm}') not found for device '{device_identifier}' in LibreNMS ports list.")
-            return None
+            avail_ports = [
+                {
+                    "ifName": p.get("ifName"),
+                    "ifDescr": p.get("ifDescr"),
+                    "ifAlias": p.get("ifAlias"),
+                    "label": p.get("label")
+                }
+                for p in ports
+            ]
+            return {
+                "error": "port_not_found",
+                "target_port": port_name,
+                "target_norm": target_norm,
+                "device_id": device_identifier,
+                "ports_count": len(ports),
+                "available_ports": avail_ports[:50] # return first 50 ports
+            }
             
         # Log port metadata for debugging
         logger.info(

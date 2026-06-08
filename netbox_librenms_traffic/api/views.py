@@ -95,6 +95,8 @@ class LibreNMSTrafficDataView(View):
                             "port_id": None,
                             "ifSpeed": None
                         }
+                    elif isinstance(stats, dict) and stats.get("error") == "port_not_found":
+                        return JsonResponse(stats, status=404)
                     in_bps = stats["in_bps"]
                     out_bps = stats["out_bps"]
                     
