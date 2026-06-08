@@ -137,3 +137,97 @@ class LibreNMSAPIClient:
             raise Exception(f"LibreNMS did not return a valid image. Content type: {content_type}. Snippet: {snippet}")
             
         return r.content, content_type
+
+    def get_port_statistics(self, device_identifier, port_name):
+        """
+        Fetch port details from LibreNMS and extract traffic rate statistics.
+        """
+        url = f"{self.url}/api/v0/devices/{quote(str(device_identifier), safe='')}/ports"
+        logger.info(f"Fetching port statistics from LibreNMS: {url}")
+        r = requests.get(url, headers=self.headers, verify=self.verify_ssl, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+        ports = data.get("ports", [])
+        
+        # Match port by name
+        matched_port = None
+        target_name = port_name.lower()
+        
+        # Try exact/case-insensitive match first on ifName or ifDescr
+        for port in ports:
+            ifName = (port.get("ifName") or "").lower()
+            ifDescr = (port.get("ifDescr") or "").lower()
+            if target_name in (ifName, ifDescr):
+                matched_port = port
+                break
+                
+        # If no exact match, try matching if target_name is a substring of ifName/ifDescr or vice versa
+        if not matched_port:
+            for port in ports:
+                ifName = (port.get("ifName") or "").lower()
+                ifDescr = (port.get("ifDescr") or "").lower()
+                if target_name in ifName or target_name in ifDescr or ifName in target_name or ifDescr in target_name:
+                    matched_port = port
+                    break
+                    
+        if not matched_port:
+            logger.warning(f"Port '{port_name}' not found for device '{device_identifier}' in LibreNMS ports list.")
+            return None
+            
+        # Extract traffic statistics
+        in_octets_rate = matched_port.get("ifInOctets_rate")
+        out_octets_rate = matched_port.get("ifOutOctets_rate")
+        
+        in_bps = 0.0
+        out_bps = 0.0
+        
+        if in_octets_rate is not None:
+            try:
+                in_bps = float(in_octets_rate) * 8
+            except (ValueError, TypeError):
+                pass
+        else:
+            in_rate_str = matched_port.get("in_rate")
+            if in_rate_str:
+                in_bps = self._parse_rate_str_to_bps(in_rate_str)
+                
+        if out_octets_rate is not None:
+            try:
+                out_bps = float(out_octets_rate) * 8
+            except (ValueError, TypeError):
+                pass
+        else:
+            out_rate_str = matched_port.get("out_rate")
+            if out_rate_str:
+                out_bps = self._parse_rate_str_to_bps(out_rate_str)
+                
+        logger.info(f"Port '{port_name}' matched. In: {in_bps} bps, Out: {out_bps} bps")
+        return {
+            "in_bps": in_bps,
+            "out_bps": out_bps,
+            "port_id": matched_port.get("port_id"),
+            "ifSpeed": matched_port.get("ifSpeed")
+        }
+
+    def _parse_rate_str_to_bps(self, rate_str):
+        """
+        Parses rate strings like "4.03 Gbps", "120.5 Mbps", "50 kbps", "10 bps" into bits per second.
+        """
+        try:
+            parts = rate_str.strip().split()
+            if not parts:
+                return 0.0
+            value = float(parts[0])
+            if len(parts) > 1:
+                unit = parts[1].lower()
+                if "gbps" in unit:
+                    value *= 1e9
+                elif "mbps" in unit:
+                    value *= 1e6
+                elif "kbps" in unit:
+                    value *= 1e3
+            return value
+        except Exception as e:
+            logger.warning(f"Failed to parse rate string '{rate_str}': {str(e)}")
+            return 0.0
+

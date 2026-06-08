@@ -19,6 +19,17 @@ class LibreNMSTrafficDataView(View):
         interface_name = request.GET.get("interface")
         time_range = request.GET.get("range", "1d")
 
+        width_str = request.GET.get("width")
+        height_str = request.GET.get("height")
+        try:
+            width = int(width_str) if width_str else 1350
+        except ValueError:
+            width = 1350
+        try:
+            height = int(height_str) if height_str else 350
+        except ValueError:
+            height = 350
+
         if not device_name or not interface_name:
             return JsonResponse(
                 {"error": "Missing device or interface query parameters"},
@@ -69,6 +80,41 @@ class LibreNMSTrafficDataView(View):
 
             logger.info(f"Resolved LibreNMS device ID: {device_id} for '{device_name}'")
 
+            # Check if the user is requesting JSON metadata instead of an image
+            accept_header = request.headers.get("Accept", "")
+            wants_json = request.GET.get("format") == "json" or "application/json" in accept_header
+
+            if wants_json:
+                try:
+                    stats = client.get_port_statistics(device_id, interface_name)
+                    if not stats:
+                        # Return empty/zero stats if interface statistics are not found
+                        stats = {
+                            "in_bps": 0.0,
+                            "out_bps": 0.0,
+                            "port_id": None,
+                            "ifSpeed": None
+                        }
+                    in_bps = stats["in_bps"]
+                    out_bps = stats["out_bps"]
+                    
+                    response_data = {
+                        "device": device_name,
+                        "interface": interface_name,
+                        "stats": {
+                            "in": { "last": in_bps, "avg": in_bps, "max": in_bps },
+                            "out": { "last": out_bps, "avg": out_bps, "max": out_bps }
+                        },
+                        "history": { "in": [], "out": [] }
+                    }
+                    return JsonResponse(response_data)
+                except Exception as e:
+                    logger.error(f"Failed to get port statistics for {device_name}/{interface_name}: {str(e)}")
+                    return JsonResponse(
+                        {"error": f"Failed to retrieve port statistics: {str(e)}"},
+                        status=500
+                    )
+
             # 3. Retrieve graph image from LibreNMS (try single-encoding first, fallback to double-encoding if needed)
             image_content = None
             content_type = "image/png"
@@ -79,8 +125,8 @@ class LibreNMSTrafficDataView(View):
                     port_name=interface_name,
                     time_range=time_range,
                     double_encode=False,
-                    width=1350,
-                    height=350
+                    width=width,
+                    height=height
                 )
             except Exception as single_err:
                 logger.warning(f"Single encoded port graph query failed: {str(single_err)}. Retrying with double-encoding...")
@@ -90,8 +136,8 @@ class LibreNMSTrafficDataView(View):
                         port_name=interface_name,
                         time_range=time_range,
                         double_encode=True,
-                        width=1350,
-                        height=350
+                        width=width,
+                        height=height
                     )
                 except Exception as double_err:
                     err_msg = f"LibreNMS API failed for both single and double encoded routes. Single error: {str(single_err)}. Double error: {str(double_err)}"
