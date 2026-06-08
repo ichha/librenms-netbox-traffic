@@ -118,7 +118,8 @@ class LibreNMSAPIClient:
         r.raise_for_status()
         
         # Check if LibreNMS returned a JSON error response instead of an image
-        if "application/json" in r.headers.get("content-type", "").lower():
+        content_type = r.headers.get("content-type", "").lower()
+        if "application/json" in content_type:
             try:
                 data = r.json()
                 message = data.get("message") or data.get("error") or "Unknown LibreNMS API error"
@@ -126,4 +127,13 @@ class LibreNMSAPIClient:
             except ValueError:
                 raise Exception(f"LibreNMS API returned JSON with non-JSON body: {r.text[:200]}")
                 
+        # Validate that the content is a valid PNG image
+        if not r.content:
+            raise Exception("LibreNMS API returned an empty response (0 bytes).")
+            
+        if not r.content.startswith(b'\x89PNG'):
+            # The response is not a valid PNG (e.g. it might be HTML of a login page or error page)
+            snippet = r.text[:250].strip().replace('\n', ' ').replace('\r', '')
+            raise Exception(f"LibreNMS did not return a valid PNG image. Content type: {content_type}. Snippet: {snippet}")
+            
         return r.content
