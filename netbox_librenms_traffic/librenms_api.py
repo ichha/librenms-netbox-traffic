@@ -174,7 +174,7 @@ class LibreNMSAPIClient:
         """
         url = (
             f"{self.url}/api/v0/devices/{quote(str(device_identifier), safe='')}/ports"
-            f"?columns=port_id,ifSpeed,ifName,ifDescr,ifAlias,label,ifInOctets_rate,ifOutOctets_rate,in_rate,out_rate"
+            f"?columns=port_id,ifSpeed,ifName,ifDescr,ifAlias,ifInOctets_rate,ifOutOctets_rate"
         )
         logger.info(f"Fetching port statistics from LibreNMS: {url}")
         r = requests.get(url, headers=self.headers, verify=self.verify_ssl, timeout=15)
@@ -194,12 +194,11 @@ class LibreNMSAPIClient:
                 matched_port = port
                 break
                 
-        # 2. Second pass: exact normalized match on label or ifAlias
+        # 2. Second pass: exact normalized match on ifAlias
         if not matched_port:
             for port in ports:
-                label_norm = self._normalize_interface_name(port.get("label"))
                 ifAlias_norm = self._normalize_interface_name(port.get("ifAlias"))
-                if target_norm == label_norm or target_norm == ifAlias_norm:
+                if target_norm == ifAlias_norm:
                     matched_port = port
                     break
 
@@ -208,15 +207,11 @@ class LibreNMSAPIClient:
             for port in ports:
                 ifName_norm = self._normalize_interface_name(port.get("ifName"))
                 ifDescr_norm = self._normalize_interface_name(port.get("ifDescr"))
-                label_norm = self._normalize_interface_name(port.get("label"))
                 
                 if ifName_norm and ifName_norm.startswith(target_norm):
                     matched_port = port
                     break
                 if ifDescr_norm and ifDescr_norm.startswith(target_norm):
-                    matched_port = port
-                    break
-                if label_norm and label_norm.startswith(target_norm):
                     matched_port = port
                     break
                     
@@ -227,11 +222,8 @@ class LibreNMSAPIClient:
                     "ifName": p.get("ifName"),
                     "ifDescr": p.get("ifDescr"),
                     "ifAlias": p.get("ifAlias"),
-                    "label": p.get("label"),
                     "ifInOctets_rate": p.get("ifInOctets_rate"),
-                    "ifOutOctets_rate": p.get("ifOutOctets_rate"),
-                    "in_rate": p.get("in_rate"),
-                    "out_rate": p.get("out_rate")
+                    "ifOutOctets_rate": p.get("ifOutOctets_rate")
                 }
                 for p in ports
             ]
