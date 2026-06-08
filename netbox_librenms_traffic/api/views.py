@@ -71,14 +71,36 @@ class LibreNMSTrafficDataView(APIView):
 
             logger.info(f"Resolved LibreNMS device ID: {device_id} for '{device_name}'")
 
-            # 3. Retrieve graph image from LibreNMS
-            image_content = client.get_port_graph_image(
-                device_identifier=device_id,
-                port_name=interface_name,
-                time_range=time_range,
-                width=1100,
-                height=300
-            )
+            # 3. Retrieve graph image from LibreNMS (try single-encoding first, fallback to double-encoding if needed)
+            image_content = None
+            try:
+                logger.info(f"Attempting single-encoded port graph query for: {interface_name}")
+                image_content = client.get_port_graph_image(
+                    device_identifier=device_id,
+                    port_name=interface_name,
+                    time_range=time_range,
+                    double_encode=False,
+                    width=1100,
+                    height=300
+                )
+            except Exception as single_err:
+                logger.warning(f"Single encoded port graph query failed: {str(single_err)}. Retrying with double-encoding...")
+                try:
+                    image_content = client.get_port_graph_image(
+                        device_identifier=device_id,
+                        port_name=interface_name,
+                        time_range=time_range,
+                        double_encode=True,
+                        width=1100,
+                        height=300
+                    )
+                except Exception as double_err:
+                    err_msg = f"LibreNMS API failed for both single and double encoded routes. Single error: {str(single_err)}. Double error: {str(double_err)}"
+                    logger.error(err_msg)
+                    return Response(
+                        {"error": err_msg},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
 
             # 4. Return raw PNG image response
             return HttpResponse(image_content, content_type="image/png")

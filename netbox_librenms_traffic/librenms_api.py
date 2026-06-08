@@ -87,7 +87,7 @@ class LibreNMSAPIClient:
             
         return None
 
-    def get_port_graph_image(self, device_identifier, port_name, time_range, width=1100, height=300):
+    def get_port_graph_image(self, device_identifier, port_name, time_range, double_encode=False, width=1100, height=300):
         """
         Fetch the raw RRD graph image from LibreNMS.
         """
@@ -100,9 +100,11 @@ class LibreNMSAPIClient:
         }
         from_time = range_map.get(time_range, "-1d")
         
-        # Double URL-encode the port name to be completely safe with slashes
-        # Standard: /api/v0/devices/:device/ports/:port/port_bits
+        # URL-encode the port name (double-encode if double_encode is True)
         encoded_port = quote(port_name, safe='')
+        if double_encode:
+            encoded_port = quote(encoded_port, safe='')
+            
         url = f"{self.url}/api/v0/devices/{quote(str(device_identifier), safe='')}/ports/{encoded_port}/port_bits"
         
         params = {
@@ -111,7 +113,17 @@ class LibreNMSAPIClient:
             "height": height
         }
         
-        logger.info(f"Requesting graph image from LibreNMS: {url} with params {params}")
+        logger.info(f"Requesting graph image from LibreNMS (double_encode={double_encode}): {url} with params {params}")
         r = requests.get(url, headers=self.headers, params=params, verify=self.verify_ssl, timeout=15)
         r.raise_for_status()
+        
+        # Check if LibreNMS returned a JSON error response instead of an image
+        if "application/json" in r.headers.get("content-type", "").lower():
+            try:
+                data = r.json()
+                message = data.get("message") or data.get("error") or "Unknown LibreNMS API error"
+                raise Exception(f"LibreNMS API Error: {message}")
+            except ValueError:
+                raise Exception(f"LibreNMS API returned JSON with non-JSON body: {r.text[:200]}")
+                
         return r.content

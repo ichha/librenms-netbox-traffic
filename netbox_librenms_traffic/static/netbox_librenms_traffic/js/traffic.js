@@ -18,15 +18,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let currentRange = "1d";
 
-    // 3. Move the card to the top section of the page
+    // 3. Move the card to the top section of the page (inside active tab content or main grid)
     if (cardEl) {
-        // Try prepending to the main NetBox page containers
-        const mainContent = document.querySelector(".content-body") || 
-                            document.querySelector("main") || 
-                            document.querySelector(".container-fluid") ||
-                            document.querySelector("#content-container");
-        if (mainContent) {
-            mainContent.insertBefore(cardEl, mainContent.firstChild);
+        // Look for main detail view columns, tab pane, or main content container
+        const targetContainer = document.querySelector(".tab-pane.active") || 
+                                document.querySelector(".tab-content") || 
+                                document.querySelector(".col-md-9") || 
+                                document.querySelector(".col-12") ||
+                                document.querySelector(".content-body") || 
+                                document.querySelector("main");
+        if (targetContainer) {
+            targetContainer.insertBefore(cardEl, targetContainer.firstChild);
         }
     }
 
@@ -55,11 +57,17 @@ document.addEventListener("DOMContentLoaded", function () {
         errorEl.classList.remove("d-none");
         
         try {
-            // Fetch the URL to parse the JSON error body returned by Django proxy
+            // Fetch the URL to parse the JSON or text error body returned by Django proxy
             const res = await fetch(imgEl.src);
             if (!res.ok) {
-                const data = await res.json();
-                errorMsgEl.textContent = data.error || "Failed to load LibreNMS graph image.";
+                const text = await res.text();
+                try {
+                    const data = JSON.parse(text);
+                    errorMsgEl.textContent = data.error || "Failed to load LibreNMS graph image.";
+                } catch (jsonErr) {
+                    // Fallback to text snippet (e.g. if it's an HTML error page)
+                    errorMsgEl.textContent = text.substring(0, 150) || "Failed to load LibreNMS graph image.";
+                }
             } else {
                 errorMsgEl.textContent = "Failed to load LibreNMS graph image.";
             }
