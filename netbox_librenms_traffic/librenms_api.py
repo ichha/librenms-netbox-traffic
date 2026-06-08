@@ -138,6 +138,36 @@ class LibreNMSAPIClient:
             
         return r.content, content_type
 
+    def _normalize_interface_name(self, name):
+        if not name:
+            return ""
+        # Lowercase and strip whitespace
+        n = name.lower().strip()
+        # Remove all spaces and special punctuation except forward slashes
+        n = "".join(c for c in n if c.isalnum() or c == '/')
+        
+        # Standardize common interface name prefixes to their standard short versions
+        prefixes = {
+            "hundredgigabitethernet": "hu",
+            "hundredgige": "hu",
+            "fortygigabitethernet": "fo",
+            "fortygige": "fo",
+            "tengigabitethernet": "te",
+            "tengige": "te",
+            "gigabitethernet": "ge",
+            "fastethernet": "fa",
+            "ethernet": "eth",
+            "portchannel": "po",
+            "loopback": "lo",
+            "vlan": "vl",
+            "gi": "ge", # Map gi -> ge for consistency
+        }
+        for full, short in prefixes.items():
+            if n.startswith(full):
+                n = short + n[len(full):]
+                break
+        return n
+
     def get_port_statistics(self, device_identifier, port_name):
         """
         Fetch port details from LibreNMS and extract traffic rate statistics.
@@ -151,29 +181,43 @@ class LibreNMSAPIClient:
         
         # Match port by name
         matched_port = None
-        target_name = port_name.lower()
+        target_norm = self._normalize_interface_name(port_name)
         
-        # Try exact/case-insensitive match first on ifName or ifDescr
+        # 1. First pass: exact normalized match on ifName or ifDescr
         for port in ports:
-            ifName = (port.get("ifName") or "").lower()
-            ifDescr = (port.get("ifDescr") or "").lower()
-            if target_name in (ifName, ifDescr):
+            ifName_norm = self._normalize_interface_name(port.get("ifName"))
+            ifDescr_norm = self._normalize_interface_name(port.get("ifDescr"))
+            if target_norm in (ifName_norm, ifDescr_norm):
                 matched_port = port
                 break
                 
-        # If no exact match, try matching if target_name is a substring of ifName/ifDescr or vice versa
+        # 2. Second pass: check if target_norm is a substring or vice versa
         if not matched_port:
             for port in ports:
-                ifName = (port.get("ifName") or "").lower()
-                ifDescr = (port.get("ifDescr") or "").lower()
-                if target_name in ifName or target_name in ifDescr or ifName in target_name or ifDescr in target_name:
+                ifName_norm = self._normalize_interface_name(port.get("ifName"))
+                ifDescr_norm = self._normalize_interface_name(port.get("ifDescr"))
+                ifAlias_norm = self._normalize_interface_name(port.get("ifAlias"))
+                label_norm = self._normalize_interface_name(port.get("label"))
+                
+                # Check if target_norm is part of any normalized name or vice versa
+                if (target_norm and (target_norm in ifName_norm or target_norm in ifDescr_norm or target_norm in ifAlias_norm or target_norm in label_norm or
+                                     ifName_norm in target_norm or ifDescr_norm in target_norm)):
                     matched_port = port
                     break
                     
         if not matched_port:
-            logger.warning(f"Port '{port_name}' not found for device '{device_identifier}' in LibreNMS ports list.")
+            logger.warning(f"Port '{port_name}' (normalized: '{target_norm}') not found for device '{device_identifier}' in LibreNMS ports list.")
             return None
             
+        # Log port metadata for debugging
+        logger.info(
+            f"Matched port: port_id={matched_port.get('port_id')}, "
+            f"ifName='{matched_port.get('ifName')}', ifDescr='{matched_port.get('ifDescr')}', "
+            f"ifSpeed={matched_port.get('ifSpeed')}, "
+            f"ifInOctets_rate={matched_port.get('ifInOctets_rate')}, ifOutOctets_rate={matched_port.get('ifOutOctets_rate')}, "
+            f"in_rate='{matched_port.get('in_rate')}', out_rate='{matched_port.get('out_rate')}'"
+        )
+
         # Extract traffic statistics
         in_octets_rate = matched_port.get("ifInOctets_rate")
         out_octets_rate = matched_port.get("ifOutOctets_rate")
