@@ -172,7 +172,10 @@ class LibreNMSAPIClient:
         """
         Fetch port details from LibreNMS and extract traffic rate statistics.
         """
-        url = f"{self.url}/api/v0/devices/{quote(str(device_identifier), safe='')}/ports"
+        url = (
+            f"{self.url}/api/v0/devices/{quote(str(device_identifier), safe='')}/ports"
+            f"?columns=port_id,ifSpeed,ifName,ifDescr,ifAlias,label,ifInOctets_rate,ifOutOctets_rate,in_rate,out_rate"
+        )
         logger.info(f"Fetching port statistics from LibreNMS: {url}")
         r = requests.get(url, headers=self.headers, verify=self.verify_ssl, timeout=15)
         r.raise_for_status()
@@ -224,7 +227,11 @@ class LibreNMSAPIClient:
                     "ifName": p.get("ifName"),
                     "ifDescr": p.get("ifDescr"),
                     "ifAlias": p.get("ifAlias"),
-                    "label": p.get("label")
+                    "label": p.get("label"),
+                    "ifInOctets_rate": p.get("ifInOctets_rate"),
+                    "ifOutOctets_rate": p.get("ifOutOctets_rate"),
+                    "in_rate": p.get("in_rate"),
+                    "out_rate": p.get("out_rate")
                 }
                 for p in ports
             ]
